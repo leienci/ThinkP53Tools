@@ -1,0 +1,16 @@
+# .NET
+bin/
+obj/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.sln.doc states
+*.sln.load fakes
+*.userosscache
+*.sln.docstates
+
+# NuGet
+*.nupkg
+packages/
