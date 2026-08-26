@@ -48,12 +48,15 @@ public sealed class PlanMenuForm : Form
             var btn = new Button
             {
                 Text = (idx == _activeIndex ? "● " : "  ") + plans[idx].DisplayName,
+                Image = PlanIconLibrary.GetImage(plans[idx].SystemName, 16),
+                ImageAlign = ContentAlignment.MiddleLeft,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Padding = new Padding(24, 0, 0, 0),
                 Dock = DockStyle.Top,
                 Height = rowHeight,
                 FlatStyle = FlatStyle.Flat,
                 BackColor = idx == _highlightedIndex ? Color.FromArgb(70, 130, 200) : Color.Transparent,
                 ForeColor = Color.White,
-                TextAlign = ContentAlignment.MiddleLeft,
                 Cursor = Cursors.Hand,
             };
             btn.FlatAppearance.BorderSize = 0;

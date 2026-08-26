@@ -5,6 +5,7 @@ public sealed class OSDForm : Form
     private readonly Label _label;
     private readonly Panel _iconPanel;
     private readonly System.Windows.Forms.Timer _timer;
+    private readonly PictureBox _iconPicture;
 
     public OSDForm()
     {
@@ -31,6 +32,15 @@ public sealed class OSDForm : Form
             Dock = DockStyle.Fill,
             BackColor = Color.Transparent,
         };
+
+        _iconPicture = new PictureBox
+        {
+            Size = new Size(24, 24),
+            SizeMode = PictureBoxSizeMode.Zoom,
+            BackColor = Color.Transparent,
+        };
+        _iconPanel.Controls.Add(_iconPicture);
+        _iconPicture.Dock = DockStyle.Fill;
 
         _label = new Label
         {
@@ -63,10 +73,14 @@ public sealed class OSDForm : Form
         }
     }
 
-    public void ShowMessage(string text, int durationMs, double opacity)
+    public void ShowMessage(string text, int durationMs, double opacity, string? planSystemName = null)
     {
         _label.Text = text;
         Opacity = opacity;
+
+        _iconPicture.Image = !string.IsNullOrEmpty(planSystemName)
+            ? PlanIconLibrary.GetImage(planSystemName, 24)
+            : null;
 
         var screen = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
         Location = new Point(

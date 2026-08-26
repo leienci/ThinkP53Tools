@@ -159,7 +159,7 @@ public sealed class ApplicationHost : IDisposable
                 _activeIndex = _plans.FindIndex(p => p.Guid == plan.Guid);
                 _tray.RefreshPlans();
                 if (_settings.Osd.Enabled)
-                    _osd.ShowMessage(plan.DisplayName, _settings.Osd.DurationMs, _settings.Osd.Opacity);
+                    _osd.ShowMessage(plan.DisplayName, _settings.Osd.DurationMs, _settings.Osd.Opacity, plan.SystemName);
             }
             else
             {

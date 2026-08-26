@@ -6,7 +6,6 @@ public sealed class TrayIconController : IDisposable
     private readonly Settings _settings;
     private readonly PowerPlanService _service;
     private Guid? _currentActive;
-    private readonly Dictionary<Guid, Icon> _icons = new();
     private bool _disposed;
 
     public event EventHandler? MenuRequested;
@@ -21,7 +20,7 @@ public sealed class TrayIconController : IDisposable
 
     public void Initialize()
     {
-        _notifyIcon.Icon = GetIcon(Guid.Empty);
+        _notifyIcon.Icon = PlanIconLibrary.GetIcon("Balanced", SystemInformation.SmallIconSize.Width);
         _notifyIcon.Text = "Power Plan Switcher";
         _notifyIcon.Visible = true;
         _notifyIcon.DoubleClick += (_, _) => MenuRequested?.Invoke(this, EventArgs.Empty);
@@ -33,7 +32,7 @@ public sealed class TrayIconController : IDisposable
     private ContextMenuStrip BuildContextMenu()
     {
         var m = new ContextMenuStrip();
-        var showItem = new ToolStripMenuItem("显示电源方案") { Image = GetIconImage(Guid.Empty) };
+        var showItem = new ToolStripMenuItem("显示电源方案") { Image = PlanIconLibrary.GetImage("Balanced", 16) };
         showItem.Click += (_, _) => MenuRequested?.Invoke(this, EventArgs.Empty);
         var exitItem = new ToolStripMenuItem("退出");
         exitItem.Click += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);
@@ -59,7 +58,8 @@ public sealed class TrayIconController : IDisposable
             if (active.HasValue && active != _currentActive)
             {
                 _currentActive = active;
-                var icon = GetIcon(active.Value);
+                var matchedPlan = plans.FirstOrDefault(p => p.Guid == active.Value) ?? plans.FirstOrDefault();
+                var icon = PlanIconLibrary.GetIcon(matchedPlan?.SystemName ?? "Balanced", SystemInformation.SmallIconSize.Width);
                 _notifyIcon.Icon = icon;
             }
 
@@ -76,51 +76,9 @@ public sealed class TrayIconController : IDisposable
         _notifyIcon.ShowBalloonTip(3000, title, text, icon);
     }
 
-    private Icon GetIcon(Guid guid)
-    {
-        if (!_icons.TryGetValue(guid, out var icon))
-        {
-            icon = guid == Guid.Empty
-                ? LoadIcon("generic.ico")
-                : LoadPlanIcon(guid);
-            _icons[guid] = icon;
-        }
-        return icon;
-    }
-
-    private Icon LoadPlanIcon(Guid guid)
-    {
-        return GetKnownPlanIcon(guid) ?? LoadIcon("generic.ico");
-    }
-
-    private Icon? GetKnownPlanIcon(Guid guid)
-    {
-        if (guid == new Guid("381b4222-f694-41f0-9685-ff5bb260df2e"))
-            return SystemIcons.Information;
-        if (guid == new Guid("8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c"))
-            return SystemIcons.WinLogo;
-        if (guid == new Guid("a1841308-3541-4fab-bc81-f71556f20b4a"))
-            return SystemIcons.Shield;
-        if (guid == new Guid("e9a42b02-d5df-448d-aa00-03f14749eb61"))
-            return SystemIcons.Application;
-        return null;
-    }
-
-    private Icon LoadIcon(string name)
-    {
-        return name.ToLowerInvariant() switch
-        {
-            "balanced.ico" or "balanced" => SystemIcons.Information,
-            "highperf.ico" or "highperf" => SystemIcons.WinLogo,
-            "powersaver.ico" or "powersaver" => SystemIcons.Shield,
-            "ultimate.ico" or "ultimate" => SystemIcons.Application,
-            _ => SystemIcons.Application
-        };
-    }
-
     private Image GetIconImage(Guid guid)
     {
-        return GetIcon(guid).ToBitmap();
+        return PlanIconLibrary.GetImage(guid);
     }
 
     public void Dispose()
@@ -130,7 +88,5 @@ public sealed class TrayIconController : IDisposable
         _notifyIcon.Visible = false;
         _notifyIcon.DoubleClick -= (_, _) => MenuRequested?.Invoke(this, EventArgs.Empty);
         _notifyIcon.Dispose();
-        foreach (var ic in _icons.Values)
-            ic.Dispose();
     }
 }

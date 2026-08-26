@@ -17,6 +17,18 @@
 
   <ItemGroup>
     <None Include="..\..\setting.ini" Link="setting.ini" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <EmbeddedResource Include="..\..\icons\Balanced.png" Link="Balanced.png" />
+    <EmbeddedResource Include="..\..\icons\HighPerf.png" Link="HighPerf.png" />
+    <EmbeddedResource Include="..\..\icons\PowerSaver.png" Link="PowerSaver.png" />
+    <EmbeddedResource Include="..\..\icons\UltimatePerf.png" Link="UltimatePerf.png" />
+    <EmbeddedResource Include="..\..\icons\Balanced.black.png" Link="Balanced.black.png" />
+    <EmbeddedResource Include="..\..\icons\HighPerf.black.png" Link="HighPerf.black.png" />
+    <EmbeddedResource Include="..\..\icons\PowerSaver.black.png" Link="PowerSaver.black.png" />
+    <EmbeddedResource Include="..\..\icons\UltimatePerf.black.png" Link="UltimatePerf.black.png" />
+  </ItemGroup>
+
+
+  <ItemGroup>
   </ItemGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
