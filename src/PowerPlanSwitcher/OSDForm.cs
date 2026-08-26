@@ -3,9 +3,9 @@ namespace PowerPlanSwitcher;
 public sealed class OSDForm : Form
 {
     private readonly Label _label;
-    private readonly Panel _iconPanel;
     private readonly System.Windows.Forms.Timer _timer;
-    private readonly PictureBox _iconPicture;
+    private readonly TableLayoutPanel _layout;
+    private Image? _icon;
 
     public OSDForm()
     {
@@ -20,27 +20,12 @@ public sealed class OSDForm : Form
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
-            ColumnCount = 2,
+            ColumnCount = 1,
             RowCount = 1,
-            Padding = new Padding(12, 8, 16, 8),
+            Padding = new Padding(48, 8, 16, 8),
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 28));
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
-
-        _iconPanel = new Panel
-        {
-            Dock = DockStyle.Fill,
-            BackColor = Color.Transparent,
-        };
-
-        _iconPicture = new PictureBox
-        {
-            Size = new Size(24, 24),
-            SizeMode = PictureBoxSizeMode.Zoom,
-            BackColor = Color.Transparent,
-        };
-        _iconPanel.Controls.Add(_iconPicture);
-        _iconPicture.Dock = DockStyle.Fill;
+        _layout = layout;
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
 
         _label = new Label
         {
@@ -50,8 +35,8 @@ public sealed class OSDForm : Form
             TextAlign = ContentAlignment.MiddleLeft,
         };
 
-        layout.Controls.Add(_iconPanel, 0, 0);
-        layout.Controls.Add(_label, 1, 0);
+        layout.Controls.Add(_label, 0, 0);
+        layout.Paint += DrawIcon;
         Controls.Add(layout);
 
         Size = new Size(260, 48);
@@ -78,9 +63,10 @@ public sealed class OSDForm : Form
         _label.Text = text;
         Opacity = opacity;
 
-        _iconPicture.Image = !string.IsNullOrEmpty(planSystemName)
+        _icon = !string.IsNullOrEmpty(planSystemName)
             ? PlanIconLibrary.GetImage(planSystemName, 24)
             : null;
+        Invalidate();
 
         var screen = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
         Location = new Point(
@@ -90,10 +76,34 @@ public sealed class OSDForm : Form
         if (!Visible)
             Show();
         else
+        {
+            _layout.Invalidate();
             Refresh();
+        }
 
         _timer.Stop();
         _timer.Interval = Math.Max(200, durationMs);
         _timer.Start();
+    }
+
+    private void DrawIcon(object? sender, PaintEventArgs e)
+    {
+        if (_icon is null)
+            return;
+
+        const int iconSize = 24;
+        var iconArea = new Rectangle(
+            (48 - iconSize) / 2,
+            (Height - iconSize) / 2,
+            iconSize,
+            iconSize);
+        e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+        e.Graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+        e.Graphics.DrawImage(_icon, iconArea);
+    }
+
+    protected override void OnPaint(PaintEventArgs e)
+    {
+        base.OnPaint(e);
     }
 }

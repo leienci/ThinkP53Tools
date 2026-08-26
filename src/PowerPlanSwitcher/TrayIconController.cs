@@ -32,7 +32,7 @@ public sealed class TrayIconController : IDisposable
     private ContextMenuStrip BuildContextMenu()
     {
         var m = new ContextMenuStrip();
-        var showItem = new ToolStripMenuItem("显示电源方案") { Image = PlanIconLibrary.GetImage("Balanced", 16) };
+        var showItem = new ToolStripMenuItem("显示电源方案") { Image = PlanIconLibrary.GetImage("Balanced", 16, true) };
         showItem.Click += (_, _) => MenuRequested?.Invoke(this, EventArgs.Empty);
         var exitItem = new ToolStripMenuItem("退出");
         exitItem.Click += (_, _) => ExitRequested?.Invoke(this, EventArgs.Empty);

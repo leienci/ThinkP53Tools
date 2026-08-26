@@ -32,13 +32,13 @@ public static class PlanIconLibrary
         return GetIconByString(name, size, IsLightTaskbar());
     }
 
-    public static Image GetImage(string planName, int size = 16)
+    public static Image GetImage(string planName, int size = 16, bool black = false)
     {
-        var cacheKey = $"{planName}_{size}";
+        var cacheKey = $"{planName}_{(black ? "B" : "W")}_{size}";
         if (_imageCache.TryGetValue(cacheKey, out var cached))
             return cached;
 
-        using var img = LoadPng(GetPngPath(planName, false), size);
+        using var img = LoadPng(GetPngPath(planName, black), size);
         var bmp = new System.Drawing.Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
         using var g = System.Drawing.Graphics.FromImage(bmp);
         g.Clear(System.Drawing.Color.Transparent);
