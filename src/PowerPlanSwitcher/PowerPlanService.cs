@@ -7,6 +7,14 @@ public sealed class PowerPlanService
     private readonly Settings _settings;
     private const int ProcessTimeoutMs = 5000;
 
+    private static readonly System.Text.RegularExpressions.Regex GuidRegex = new(
+        @"([0-9A-Fa-f]{8}\-[0-9A-Fa-f]{4}\-[0-9A-Fa-f]{4}\-[0-9A-Fa-f]{4}\-[0-9A-Fa-f]{12})",
+        System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static readonly System.Text.RegularExpressions.Regex ParenNameRegex = new(
+        @"\(([^)]*)\)",
+        System.Text.RegularExpressions.RegexOptions.Compiled);
+
     public PowerPlanService(Settings settings)
     {
         _settings = settings;
@@ -14,54 +22,9 @@ public sealed class PowerPlanService
 
     public Guid? GetActiveGuid()
     {
-        var output = RunPowerCfg("/getactivescheme").Trim();
-        if (string.IsNullOrEmpty(output))
-            return null;
-
-        var span = output.AsSpan();
-        var idx = span.IndexOf(":");
-        if (idx < 0)
-            return null;
-
-        var guidPart = span[(idx + 1)..].Trim();
-        if (Guid.TryParse(guidPart, out var guid))
-            return guid;
-
-        return ExtractGuid(span);
-    }
-
-    private static Guid? ExtractGuid(ReadOnlySpan<char> s)
-    {
-        var start = -1;
-        for (int i = 0; i < s.Length; i++)
-        {
-            if (s[i] == ':' && i + 1 < s.Length)
-            {
-                start = i + 1;
-                break;
-            }
-            if (s[i] == '-' && start < 0)
-            {
-                var candidate = s[i..];
-                var end = candidate.IndexOf(')');
-                if (end > 0)
-                    candidate = candidate[..end];
-                if (Guid.TryParse(candidate, out var g))
-                    return g;
-            }
-        }
-
-        if (start >= 0)
-        {
-            var candidate = s[start..];
-            var end = candidate.IndexOfAny(" \t\r\n");
-            if (end > 0)
-                candidate = candidate[..end];
-            if (Guid.TryParse(candidate, out var g))
-                return g;
-        }
-
-        return null;
+        var output = RunPowerCfg("/getactivescheme");
+        var match = GuidRegex.Match(output);
+        return match.Success && Guid.TryParse(match.Value, out var guid) ? guid : null;
     }
 
     public List<PowerPlan> EnumeratePlans()
@@ -74,14 +37,14 @@ public sealed class PowerPlanService
         foreach (var line in output.Split('\n'))
         {
             var trimmed = line.Trim();
-            if (!trimmed.StartsWith("Power Scheme GUID:", StringComparison.OrdinalIgnoreCase))
-                continue;
 
-            var guidStr = ExtractGuidFromLine(trimmed);
-            if (string.IsNullOrEmpty(guidStr) || !Guid.TryParse(guidStr, out var guid))
+            var guidMatch = GuidRegex.Match(trimmed);
+            if (!guidMatch.Success || !Guid.TryParse(guidMatch.Value, out var guid))
                 continue;
 
             var sysName = ExtractParenName(trimmed);
+            if (string.IsNullOrEmpty(sysName))
+                continue;
 
             plans.Add(new PowerPlan
             {
@@ -118,23 +81,10 @@ public sealed class PowerPlanService
         return sysName;
     }
 
-    private static string? ExtractGuidFromLine(string line)
-    {
-        var m = System.Text.RegularExpressions.Regex.Match(line,
-            @"([0-9A-Fa-f]{8}\-[0-9A-Fa-f]{4}\-[0-9A-Fa-f]{4}\-[0-9A-Fa-f]{4}\-[0-9A-Fa-f]{12})");
-        return m.Success ? m.Groups[1].Value : null;
-    }
-
     private static string ExtractParenName(string line)
     {
-        var start = line.IndexOf('(');
-        if (start < 0)
-            return string.Empty;
-        var end = line.IndexOf(')', start + 1);
-        if (end < 0)
-            return string.Empty;
-        var inner = line.Substring(start + 1, end - start - 1).Trim();
-        return inner;
+        var m = ParenNameRegex.Match(line);
+        return m.Success ? m.Groups[1].Value.Trim() : string.Empty;
     }
 
     public bool SetActive(Guid guid)
