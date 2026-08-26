@@ -8,7 +8,7 @@ public sealed class PlanMenuForm : Form
     private int _highlightedIndex;
     private readonly int _activeIndex;
     private readonly bool _hotkeySelection;
-    private readonly List<Button> _buttons = new();
+    private readonly List<Button> _buttons;
     private const int WsExNoactivate = 0x08000000;
     private const int WsExToolwindow = 0x00000080;
     private const int WsExTopmost = 0x00000008;
@@ -42,7 +42,8 @@ public sealed class PlanMenuForm : Form
         }
         ClientSize = new Size(maxWidth, plans.Count * rowHeight + 16);
 
-        for (var i = 0; i < plans.Count; i++)
+        _buttons = new List<Button>(new Button[plans.Count]);
+        for (var i = plans.Count - 1; i >= 0; i--)
         {
             var idx = i;
             var btn = new Button
@@ -63,7 +64,7 @@ public sealed class PlanMenuForm : Form
             btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(60, 100, 160);
             btn.Click += (_, _) => PlanClicked?.Invoke(this, _plans[idx]);
             btn.MouseEnter += (_, _) => SetHighlight(idx);
-            _buttons.Add(btn);
+            _buttons[idx] = btn;
             Controls.Add(btn);
         }
 
