@@ -2,7 +2,7 @@ namespace PowerPlanSwitcher;
 
 public sealed class OSDForm : Form
 {
-    private const int CornerRadius = 16;
+    private const int CornerRadius = 10;
     private readonly Label _label;
     private readonly System.Windows.Forms.Timer _timer;
     private readonly TableLayoutPanel _layout;
@@ -65,13 +65,14 @@ public sealed class OSDForm : Form
 
     public void ShowMessage(string text, int durationMs, double opacity, string? planSystemName = null)
     {
+        if (!Visible)
+            Opacity = 0;
+
         _label.Text = text;
-        Opacity = opacity;
 
         _icon = !string.IsNullOrEmpty(planSystemName)
             ? PlanIconLibrary.GetImage(planSystemName, 24)
             : null;
-        Invalidate();
 
         var screen = Screen.PrimaryScreen?.WorkingArea ?? new Rectangle(0, 0, 1920, 1080);
         Location = new Point(
@@ -79,12 +80,17 @@ public sealed class OSDForm : Form
             screen.Bottom - Height - 64);
 
         if (!Visible)
+        {
             Show();
+            _layout.Refresh();
+        }
         else
         {
-            _layout.Invalidate();
+            _layout.Invalidate(true);
             Refresh();
         }
+
+        Opacity = opacity;
 
         _timer.Stop();
         _timer.Interval = Math.Max(200, durationMs);

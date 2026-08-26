@@ -101,8 +101,8 @@ public sealed class ApplicationHost : IDisposable
         menu.Canceled += (_, _) => CloseMenu();
         _menu = menu;
 
-        var screen = Screen.FromPoint(Cursor.Position);
-        menu.PositionAtWorkArea(screen.WorkingArea);
+        var workArea = Screen.PrimaryScreen?.WorkingArea ?? Screen.FromPoint(Cursor.Position).WorkingArea;
+        menu.PositionAtWorkArea(workArea);
         menu.Show();
         menu.Activate();
     }
@@ -150,6 +150,15 @@ public sealed class ApplicationHost : IDisposable
     private void Activate(PowerPlan plan)
     {
         CloseMenu();
+
+        var previousGuid = _service.GetActiveGuid();
+        if (previousGuid.HasValue && previousGuid.Value == plan.Guid)
+        {
+            _activeGuid = plan.Guid;
+            _activeIndex = _plans.FindIndex(p => p.Guid == plan.Guid);
+            _tray.RefreshPlans();
+            return;
+        }
 
         try
         {
