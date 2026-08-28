@@ -12,6 +12,8 @@ public sealed class PlanMenuForm : Form
     private const int WsExNoactivate = 0x08000000;
     private const int WsExToolwindow = 0x00000080;
     private const int WsExTopmost = 0x00000008;
+    private const int WmActivateApp = 0x001C;
+    private bool _closing;
 
     public event EventHandler<PowerPlan>? PlanClicked;
     public event EventHandler? Canceled;
@@ -73,6 +75,11 @@ public sealed class PlanMenuForm : Form
         KeyDown += OnKeyDown;
     }
 
+    public void SetClosing()
+    {
+        _closing = true;
+    }
+
     public void SetHighlight(int index)
     {
         if (index < 0 || index >= _plans.Count)
@@ -107,6 +114,22 @@ public sealed class PlanMenuForm : Form
             cp.ExStyle |= WsExNoactivate | WsExToolwindow | WsExTopmost;
             return cp;
         }
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        // WM_ACTIVATEAPP with wParam=0 means the application is being deactivated
+        // (e.g. user clicked on another app's window, the desktop, or the taskbar).
+        // For a WS_EX_NOACTIVATE popup like this one, Deactivate is unreliable,
+        // so we rely on WM_ACTIVATEAPP to close the menu on outside clicks.
+        // Guard with _closing to prevent re-entrancy when Close/Dispose triggers
+        // WM_ACTIVATEAPP internally (e.g. via PlanClicked → CloseMenu → Form.Close).
+        if (m.Msg == WmActivateApp && (int)m.WParam == 0 && !IsDisposed && !_closing)
+        {
+            Canceled?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+        base.WndProc(ref m);
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)

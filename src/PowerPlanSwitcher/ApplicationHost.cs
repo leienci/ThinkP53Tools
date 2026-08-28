@@ -109,13 +109,16 @@ public sealed class ApplicationHost : IDisposable
 
     private void CloseMenu()
     {
-        if (_menu is not null && !_menu.IsDisposed)
-        {
-            _menu.Close();
-            _menu.Dispose();
-        }
+        var menu = _menu;
         _menu = null;
         _hotkeySelection = false;
+
+        if (menu is null || menu.IsDisposed)
+            return;
+
+        menu.SetClosing();
+        menu.Close();
+        menu.Dispose();
     }
 
     private void OnWinKeyReleased(object? sender, EventArgs e)
