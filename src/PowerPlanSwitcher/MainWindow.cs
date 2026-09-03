@@ -5,12 +5,14 @@ namespace PowerPlanSwitcher;
 public sealed class MainWindow : Form
 {
     private const int WM_HOTKEY = 0x0312;
+    private const int WM_SETTINGCHANGE = 0x001A;
     private const int HotkeyId = 0x4250;
     private readonly KeyboardHook _keyboardHook;
 
     public event EventHandler? HotkeyPressed;
     public event EventHandler? WinKeyReleased;
     public event EventHandler? EscapePressed;
+    public event EventHandler? SystemThemeChanged;
 
     public MainWindow()
     {
@@ -48,6 +50,15 @@ public sealed class MainWindow : Form
     {
         if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HotkeyId)
             HotkeyPressed?.Invoke(this, EventArgs.Empty);
+        else if (m.Msg == WM_SETTINGCHANGE)
+        {
+            var name = m.LParam == IntPtr.Zero ? null : Marshal.PtrToStringUni(m.LParam);
+            if (name != null && (name.StartsWith("ImmersiveColorSet", StringComparison.OrdinalIgnoreCase)
+                              || name.StartsWith("ThemeChanged", StringComparison.OrdinalIgnoreCase)))
+            {
+                SystemThemeChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
         base.WndProc(ref m);
     }
 

@@ -71,6 +71,33 @@ public sealed class TrayIconController : IDisposable
         }
     }
 
+    public void ApplyThemeChange()
+    {
+        try
+        {
+            PlanIconLibrary.ClearCache();
+            _currentActive = null;
+            RefreshPlans();
+            RebuildContextMenuImage();
+        }
+        catch
+        {
+        }
+    }
+
+    private void RebuildContextMenuImage()
+    {
+        if (_notifyIcon.ContextMenuStrip is null) return;
+        foreach (ToolStripItem item in _notifyIcon.ContextMenuStrip.Items)
+        {
+            if (item is ToolStripMenuItem mi && mi.Text == "显示电源方案")
+            {
+                mi.Image = PlanIconLibrary.GetImage("Balanced", 16, true);
+                return;
+            }
+        }
+    }
+
     public void Notify(string title, string text, ToolTipIcon icon = ToolTipIcon.Info)
     {
         _notifyIcon.ShowBalloonTip(3000, title, text, icon);

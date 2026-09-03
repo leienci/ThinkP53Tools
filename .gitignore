@@ -14,3 +14,4 @@ obj/
 # NuGet
 *.nupkg
 packages/
+.kilo/plans/

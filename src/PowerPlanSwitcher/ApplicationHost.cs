@@ -26,6 +26,7 @@ public sealed class ApplicationHost : IDisposable
         _mainWindow.HotkeyPressed += OnHotkeyPressed;
         _mainWindow.WinKeyReleased += OnWinKeyReleased;
         _mainWindow.EscapePressed += OnEscapePressed;
+        _mainWindow.SystemThemeChanged += (_, _) => _tray.ApplyThemeChange();
 
         _tray.MenuRequested += (_, _) => ShowMenu(false);
         _tray.ExitRequested += (_, _) => Exit();

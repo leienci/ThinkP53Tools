@@ -55,6 +55,14 @@ public static class PlanIconLibrary
         return GetImage(name, size);
     }
 
+    public static void ClearCache()
+    {
+        foreach (var kv in _iconCache) kv.Value.Dispose();
+        foreach (var kv in _imageCache) (kv.Value as IDisposable)?.Dispose();
+        _iconCache.Clear();
+        _imageCache.Clear();
+    }
+
     private static Icon GetIconByString(string planName, int size, bool lightTaskbar)
     {
         var cacheKey = $"{planName}_{(lightTaskbar ? "L" : "D")}_{size}";
