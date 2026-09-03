@@ -6,6 +6,8 @@ public sealed class MainWindow : Form
 {
     private const int WM_HOTKEY = 0x0312;
     private const int WM_SETTINGCHANGE = 0x001A;
+    private const int WM_QUERYENDSESSION = 0x0011;
+    private const int WM_ENDSESSION = 0x0016;
     private const int HotkeyId = 0x4250;
     private readonly KeyboardHook _keyboardHook;
 
@@ -13,6 +15,7 @@ public sealed class MainWindow : Form
     public event EventHandler? WinKeyReleased;
     public event EventHandler? EscapePressed;
     public event EventHandler? SystemThemeChanged;
+    public event EventHandler? ShutdownRequested;
 
     public MainWindow()
     {
@@ -58,6 +61,24 @@ public sealed class MainWindow : Form
             {
                 SystemThemeChanged?.Invoke(this, EventArgs.Empty);
             }
+        }
+        else if (m.Msg == WM_QUERYENDSESSION)
+        {
+            // Windows 正在关机/注销/重启：通知宿主尽快退出，避免定时器继续调 powercfg.exe。
+            ShutdownRequested?.Invoke(this, EventArgs.Empty);
+            m.Result = new IntPtr(1);
+            return;
+        }
+        else if (m.Msg == WM_ENDSESSION)
+        {
+            // 会话正在结束（wParam 非 0 时为 TRUE）。直接退出消息循环。
+            ShutdownRequested?.Invoke(this, EventArgs.Empty);
+            if (m.WParam != IntPtr.Zero)
+            {
+                Application.ExitThread();
+                Environment.Exit(0);
+            }
+            return;
         }
         base.WndProc(ref m);
     }

@@ -14,6 +14,7 @@ public sealed class ApplicationHost : IDisposable
     private List<PowerPlan> _plans = new();
     private bool _hotkeySelection;
     private bool _disposed;
+    private volatile bool _exiting;
 
     public ApplicationHost(Settings settings)
     {
@@ -27,6 +28,7 @@ public sealed class ApplicationHost : IDisposable
         _mainWindow.WinKeyReleased += OnWinKeyReleased;
         _mainWindow.EscapePressed += OnEscapePressed;
         _mainWindow.SystemThemeChanged += (_, _) => _tray.ApplyThemeChange();
+        _mainWindow.ShutdownRequested += OnShutdownRequested;
 
         _tray.MenuRequested += (_, _) => ShowMenu(false);
         _tray.ExitRequested += (_, _) => Exit();
@@ -46,6 +48,7 @@ public sealed class ApplicationHost : IDisposable
 
     private void OnRefresh()
     {
+        if (_exiting) return;
         try
         {
             _plans = _service.EnumeratePlans();
@@ -196,12 +199,22 @@ public sealed class ApplicationHost : IDisposable
 
     public void Exit()
     {
-        _refreshTimer.Stop();
+        if (_exiting) return;
+        _exiting = true;
+
+        // 优先停掉定时器，避免关机过程中继续拉起 powercfg.exe。
+        try { _refreshTimer.Stop(); } catch { }
         _mainWindow.UnregisterHotkey();
         CloseMenu();
         Dispose();
         Application.ExitThread();
         Environment.Exit(0);
+    }
+
+    private void OnShutdownRequested(object? sender, EventArgs e)
+    {
+        // Windows 正在关机/注销/重启：走与用户点击"退出"相同的快速路径。
+        Exit();
     }
 
     public void Dispose()
