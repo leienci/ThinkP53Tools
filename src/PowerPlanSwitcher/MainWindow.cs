@@ -6,15 +6,19 @@ public sealed class MainWindow : Form
 {
     private const int WM_HOTKEY = 0x0312;
     private const int WM_SETTINGCHANGE = 0x001A;
+    private const int WM_DISPLAYCHANGE = 0x007E;
     private const int WM_QUERYENDSESSION = 0x0011;
     private const int WM_ENDSESSION = 0x0016;
     private const int HotkeyId = 0x4250;
+    private readonly int _taskbarCreatedMessage;
     private readonly KeyboardHook _keyboardHook;
 
     public event EventHandler? HotkeyPressed;
     public event EventHandler? WinKeyReleased;
     public event EventHandler? EscapePressed;
     public event EventHandler? SystemThemeChanged;
+    public event EventHandler? DisplayChanged;
+    public event EventHandler? TaskbarCreated;
     public event EventHandler? ShutdownRequested;
 
     public MainWindow()
@@ -25,6 +29,7 @@ public sealed class MainWindow : Form
         WindowState = FormWindowState.Minimized;
         Opacity = 0;
         Size = new Size(1, 1);
+        _taskbarCreatedMessage = RegisterWindowMessage("TaskbarCreated");
         _keyboardHook = new KeyboardHook();
         _keyboardHook.WinKeyReleased += (_, _) => WinKeyReleased?.Invoke(this, EventArgs.Empty);
         _keyboardHook.EscapePressed += (_, _) => EscapePressed?.Invoke(this, EventArgs.Empty);
@@ -62,6 +67,14 @@ public sealed class MainWindow : Form
                 SystemThemeChanged?.Invoke(this, EventArgs.Empty);
             }
         }
+        else if (m.Msg == WM_DISPLAYCHANGE)
+        {
+            DisplayChanged?.Invoke(this, EventArgs.Empty);
+        }
+        else if (m.Msg == _taskbarCreatedMessage)
+        {
+            TaskbarCreated?.Invoke(this, EventArgs.Empty);
+        }
         else if (m.Msg == WM_QUERYENDSESSION)
         {
             // Windows 正在关机/注销/重启：通知宿主尽快退出，避免定时器继续调 powercfg.exe。
@@ -92,6 +105,9 @@ public sealed class MainWindow : Form
         }
         base.Dispose(disposing);
     }
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    private static extern int RegisterWindowMessage(string lpString);
 }
 
 internal sealed class KeyboardHook : IDisposable

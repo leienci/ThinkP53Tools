@@ -7,6 +7,8 @@ public sealed class TrayIconController : IDisposable
     private readonly PowerPlanService _service;
     private Guid? _currentActive;
     private bool _disposed;
+    private EventHandler? _onDoubleClick;
+    private MouseEventHandler? _onMouseClick;
 
     public event EventHandler? MenuRequested;
     public event EventHandler? ExitRequested;
@@ -16,17 +18,23 @@ public sealed class TrayIconController : IDisposable
         _settings = settings;
         _service = service;
         _notifyIcon = new NotifyIcon();
+        _onDoubleClick = (_, _) => MenuRequested?.Invoke(this, EventArgs.Empty);
+        _onMouseClick = OnNotifyIconMouseClick;
     }
 
     public void Initialize()
     {
-        _notifyIcon.Icon = PlanIconLibrary.GetIcon("Balanced", SystemInformation.SmallIconSize.Width);
+        SetupNotifyIcon();
+    }
+
+    private void SetupNotifyIcon()
+    {
+        _notifyIcon.Icon = PlanIconLibrary.GetIcon(_currentActive is null ? "Balanced" : GetPlanSystemName(_currentActive.Value), SystemInformation.SmallIconSize.Width);
         _notifyIcon.Text = "Power Plan Switcher";
         _notifyIcon.Visible = true;
-        _notifyIcon.DoubleClick += (_, _) => MenuRequested?.Invoke(this, EventArgs.Empty);
-        _notifyIcon.MouseClick += OnNotifyIconMouseClick;
+        _notifyIcon.DoubleClick += _onDoubleClick;
+        _notifyIcon.MouseClick += _onMouseClick;
         _notifyIcon.ContextMenuStrip = BuildContextMenu();
-        RefreshPlans();
     }
 
     private ContextMenuStrip BuildContextMenu()
@@ -85,6 +93,28 @@ public sealed class TrayIconController : IDisposable
         }
     }
 
+    public void RecreateNotifyIcon()
+    {
+        try
+        {
+            if (_disposed) return;
+
+            var contextMenu = _notifyIcon.ContextMenuStrip;
+            _notifyIcon.Visible = false;
+            _notifyIcon.DoubleClick -= _onDoubleClick;
+            _notifyIcon.MouseClick -= _onMouseClick;
+            _notifyIcon.Dispose();
+            contextMenu?.Dispose();
+
+            _notifyIcon = new NotifyIcon();
+            SetupNotifyIcon();
+            RefreshPlans();
+        }
+        catch
+        {
+        }
+    }
+
     private void RebuildContextMenuImage()
     {
         if (_notifyIcon.ContextMenuStrip is null) return;
@@ -103,9 +133,16 @@ public sealed class TrayIconController : IDisposable
         _notifyIcon.ShowBalloonTip(3000, title, text, icon);
     }
 
-    private Image GetIconImage(Guid guid)
+    private string GetPlanSystemName(Guid guid)
     {
-        return PlanIconLibrary.GetImage(guid);
+        try
+        {
+            return _service.EnumeratePlans().FirstOrDefault(p => p.Guid == guid)?.SystemName ?? "Balanced";
+        }
+        catch
+        {
+            return "Balanced";
+        }
     }
 
     public void Dispose()
@@ -113,7 +150,8 @@ public sealed class TrayIconController : IDisposable
         if (_disposed) return;
         _disposed = true;
         _notifyIcon.Visible = false;
-        _notifyIcon.DoubleClick -= (_, _) => MenuRequested?.Invoke(this, EventArgs.Empty);
+        _notifyIcon.DoubleClick -= _onDoubleClick;
+        _notifyIcon.MouseClick -= _onMouseClick;
         _notifyIcon.Dispose();
     }
 }

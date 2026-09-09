@@ -8,6 +8,7 @@ public sealed class ApplicationHost : IDisposable
     private readonly OSDForm _osd;
     private readonly TrayIconController _tray;
     private readonly System.Windows.Forms.Timer _refreshTimer;
+    private readonly System.Windows.Forms.Timer _displayRestoreTimer;
     private PlanMenuForm? _menu;
     private Guid? _activeGuid;
     private int _activeIndex = -1;
@@ -24,10 +25,26 @@ public sealed class ApplicationHost : IDisposable
         _osd = new OSDForm();
         _tray = new TrayIconController(_settings, _service);
 
+        _refreshTimer = new System.Windows.Forms.Timer { Interval = _settings.Behavior.RefreshIntervalMs };
+        _refreshTimer.Tick += (_, _) => OnRefresh();
+
+        _displayRestoreTimer = new System.Windows.Forms.Timer { Interval = 1500 };
+        _displayRestoreTimer.Tick += (_, _) =>
+        {
+            _displayRestoreTimer.Stop();
+            _tray.RecreateNotifyIcon();
+        };
+
         _mainWindow.HotkeyPressed += OnHotkeyPressed;
         _mainWindow.WinKeyReleased += OnWinKeyReleased;
         _mainWindow.EscapePressed += OnEscapePressed;
         _mainWindow.SystemThemeChanged += (_, _) => _tray.ApplyThemeChange();
+        _mainWindow.DisplayChanged += (_, _) => ScheduleTrayRestore();
+        _mainWindow.TaskbarCreated += (_, _) =>
+        {
+            _displayRestoreTimer.Stop();
+            _tray.RecreateNotifyIcon();
+        };
         _mainWindow.ShutdownRequested += OnShutdownRequested;
 
         _tray.MenuRequested += (_, _) => ShowMenu(false);
@@ -38,12 +55,16 @@ public sealed class ApplicationHost : IDisposable
             _tray.Notify("热键注册失败", $"请检查 {_settings.FilePath} 中的 Key 配置，避免冲突。", ToolTipIcon.Error);
         }
 
-        _refreshTimer = new System.Windows.Forms.Timer { Interval = _settings.Behavior.RefreshIntervalMs };
-        _refreshTimer.Tick += (_, _) => OnRefresh();
-
         _tray.Initialize();
         _refreshTimer.Start();
         OnRefresh();
+    }
+
+    private void ScheduleTrayRestore()
+    {
+        if (_exiting) return;
+        _displayRestoreTimer.Stop();
+        _displayRestoreTimer.Start();
     }
 
     private void OnRefresh()
@@ -202,8 +223,8 @@ public sealed class ApplicationHost : IDisposable
         if (_exiting) return;
         _exiting = true;
 
-        // 优先停掉定时器，避免关机过程中继续拉起 powercfg.exe。
         try { _refreshTimer.Stop(); } catch { }
+        try { _displayRestoreTimer.Stop(); } catch { }
         _mainWindow.UnregisterHotkey();
         CloseMenu();
         Dispose();
@@ -213,7 +234,6 @@ public sealed class ApplicationHost : IDisposable
 
     private void OnShutdownRequested(object? sender, EventArgs e)
     {
-        // Windows 正在关机/注销/重启：走与用户点击"退出"相同的快速路径。
         Exit();
     }
 
@@ -222,6 +242,7 @@ public sealed class ApplicationHost : IDisposable
         if (_disposed) return;
         _disposed = true;
         _refreshTimer.Dispose();
+        _displayRestoreTimer.Dispose();
         _tray.Dispose();
         _mainWindow.Dispose();
         _osd.Dispose();
